@@ -1,8 +1,14 @@
 # Statistical Analysis of Network Data - Notes
 
+## What this is:
+
 This repository is a collection of notes from my independent reading of the book :book: **Statistical Analysis of Network Data, with R** by Eric D. Kolaczyk in Summer 2019. 
 
+## What this is for:
+
 The goal of this repository is to build a foundation in the domain of network data with respect to statistical analysis, and a source of inspirations and ideas for the honors thesis in Math/Mathematical Statistics in my senior year.
+
+## Contents:
 
 As planned, there will be notes for each of the 10 chapters, with the exception of chapters 1 and 2, which are introductions.
 
