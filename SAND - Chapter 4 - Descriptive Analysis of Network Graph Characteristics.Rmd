@@ -1,0 +1,414 @@
+---
+title:  |
+        | Chapter 4
+        | Descriptive Analysis of Network Graph Characteristics
+subtitle: "Statistical Analysis of Network Data, with R - Eric D. Kolaczyk"
+author: "Thu Nguyen"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    toc: true # table of content true
+    toc_depth: 2  # upto three depths of headings (specified by #, ## and ###)
+    number_sections: true  ## if you want number sections at each table header
+  html_document:
+    df_print: paged
+number_sections: yes
+geometry: margin=2cm
+---
+<style type="text/css">
+  .main-container {
+  max-width: 800px !important;
+  font-size: 18px;
+  }
+  code.r{
+    font-size: 18px;
+  }
+  pre {
+    font-size: 18px
+  }
+  h1.title {
+    font-size: 30px;
+    color: red;
+  }
+  h1 {
+    font-size: 24px;
+    color: blue;
+  }
+  h2 {
+    font-size: 18px;
+    color: blue;
+  }
+  h3 {
+    font-size: 12px;
+  }
+</style>
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+options(scipen=999)
+par(mar=c(0,0,1,0))
+```
+
+Libraries
+```{r}
+library(igraph)
+library(igraphdata)
+library(sand)
+library(ape)
+```
+
+
+# Introduction
+
+***
+
+\clearpage
+
+# Vertex and Edge Characteristics
+
+***
+
+## Vertex degree
+
+Given $G=(V,E)$, with degree $d_v$ for vertex $v$, define $f_d$ to be the fraction of vertices $v \in V$ with degree $d_v = d$. Then $\{f_d\}_{d \geq 0}$  is the \textbf{degree distribution} of $G$. For example:
+
+```{r fig.height=2.5,fig.width=6}
+data(karate)
+hist(degree(karate), col = 'lightblue', xlim = c(0, 50), 
+     xlab = 'Vertex Degree', ylab = 'Frequency', main = 'Degree distribution on karate data')
+```
+
+For a \textit{weighted networks}, \textbf{vertex strength} is the sum of weights of edges incident to a given vertex, by function \texttt{\color{blue}{graph.strength()}}. For example:
+
+```{r fig.height=2.5,fig.width=6}
+hist(graph.strength(karate), col = "pink",
+     xlab = "Vertex Strength", ylab = "Frequency", main = 'Vertex Strength')
+```
+
+Another dataset, `yeast` from package `igraphdata`:
+
+```{r}
+data(yeast)
+nv <- vcount(yeast); ne <- ecount(yeast)
+```
+
+where there are $`r nv`$ vertices and $`r ne`$ edges, and the distributions of $degree$ and $\log(degree)$, which gives a fairly linear relationship:
+
+```{r fig.height=2,fig.width=8}
+par(mfrow = c(1,2)); par(mar=c(4,5,1.5,5))
+d.yeast <- degree(yeast)
+hist(d.yeast, col = 'blue', xlab = 'Vertex Degree', ylab = 'Frequency', 
+     main = 'Degree Distribution')
+dd.yeast <- degree.distribution(yeast)
+d <- 1:max(d.yeast) - 1
+ind <- (dd.yeast != 0)
+plot(d[ind], dd.yeast[ind], log = 'xy', col = 'blue',
+     xlab = 'Log-Degree', ylab = 'Log-Intensity', main = 'Log-Log Degree Distribution')
+```
+
+Alternatively, we can look at the average degree of the neighbors of a given vertex, by \texttt{\color{blue}{graph.knn()}}:
+
+```{r fig.height=2,fig.width=6}
+par(mar=c(4,5,.5,5))
+a.nn.deg.yeast <- graph.knn(yeast,V(yeast))$knn
+plot(d.yeast, a.nn.deg.yeast, log = "xy", col = "goldenrod", 
+     xlab = 'Log Vertex Degree', ylab ='Log Average')
+```
+
+***
+
+\clearpage
+
+## Vertex Centrality
+
+\textbf{Closeness centrality measures} attempts to measure that a vertex is 'central'   if it is 'close' to many other vertices. Let $dist(v,u)$ be the geodesic distance, the standard approach is:
+$$ c_{Cl} \ (v) = \frac{1}{\sum_{u \in V} dist(v,u)} $$
+
+\textbf{Betweenness centrality measures} attempts to summarize the extent to which a vertex is located 'between' other pairs of vertices. The perspective is that 'importance' relates to where a vertex is located relative to network' paths. Let $\sigma(s,t|v)$ be the total number of shortest paths between $s$ and $t$ passing through $v$, and $sigma(s,t)$  be the total number of shortest paths anywhere, the standard approach is:
+$$ c_B \ (v) = \sum_{s \neq t \neq t \in V} \ \frac{\sigma(s,t|v)}{\sigma(s,t)} $$
+
+\textbf{Status/Prestige/Rank}: the more central a vertex's neighbors are, the more central that vertex itself is. This is typically expressed as eigenvector solutions of linear systems of equations, called \textbf{eigenvector centrality measures}. Let $\textbf{c}_{Ei} = (c_{Ei}(1), \dots, c_{Ei}(N_v))^T$ be the solution to $\textbf{Ac}_{Ei} = \alpha^{-1}\textbf{c}_{Ei}$, where $\textbf{A}$ is the adjacency matrix:
+$$ c_{Ei} \ (v) = \alpha \sum_{\{u,v\} \in E} \ c_{Ei} \ (u) $$
+
+To display vertex centrality, use \texttt{\color{blue}{gplot.target()}} from package `sna`, to get adjacency matrix: \texttt{\color{blue}{get.adjacency()}}:
+
+Similarly, instead of `degree(g)`, we can plot with attributes \texttt{\color{blue}{closeness(g), betweenness(g), evcent(g)\$vector}} for the 3 measures above respectively.
+
+```{r fig.height=4,fig.width=8}
+library(network); library(sna)
+par(mfrow = c(2,2)); par(mar=c(0,0,1,0))
+A <- get.adjacency(karate, sparse = FALSE)
+g <- network::as.network.matrix(A)
+sna::gplot.target(g, degree(g), main = 'Degree',
+                  circ.lab = FALSE, circ.col = 'darkblue', usearrows = FALSE,
+                  vertex.col = c('blue', rep('red', 32), 'yellow'), edge.col = 'darkgray')
+sna::gplot.target(g, closeness(g), main = 'Closeness',
+                  circ.lab = FALSE, circ.col = 'darkblue', usearrows = FALSE,
+                  vertex.col = c('blue', rep('red', 32), 'yellow'), edge.col = 'darkgray')
+sna::gplot.target(g, betweenness(g), main = 'Betweenness',
+                  circ.lab = FALSE, circ.col = 'darkblue', usearrows = FALSE,
+                  vertex.col = c('blue', rep('red', 32), 'yellow'), edge.col = 'darkgray')
+sna::gplot.target(g, evcent(g), main = 'Eigenvalue',
+                  circ.lab = FALSE, circ.col = 'darkblue', usearrows = FALSE,
+                  vertex.col = c('blue', rep('red', 32), 'yellow'), edge.col = 'darkgray')
+```
+
+Extension from \textit{undirected} to \textit{directed} graphs are straightforward. For example: new dataset AIDS blog network:
+
+```{r fig.height=3,fig.width=8}
+l <- layout.kamada.kawai(aidsblog)
+par(mfrow=c(1,2)); par(mar=c(0,0,1,0))
+plot(aidsblog, layout = l, main = 'Hubs', vertex.label = '',
+     vertex.size = 10*sqrt(hub.score(aidsblog)$vector))
+plot(aidsblog, layout = l, main = 'Authorities', vertex.label = '',
+     vertex.size = 10*sqrt(authority.score(aidsblog)$vector))
+
+```
+
+***
+
+\clearpage
+
+## Characterizing Edges
+
+```{r}
+eb <- edge.betweenness(karate)
+E(karate)[order(eb, decreasing = T)[1:3]]
+```
+
+***
+
+\clearpage
+
+# Characterizing Network Cohesion
+
+Questions to consider regarding \textbf{network cohesion}:
+
+*  Do friends of a given person in a social network tend to be friends of another as well?
+*  Does the structure of WWW pages tend to separate with respect to distinct types of content?
+
+***
+
+## Subgraphs and Censuses
+
+\textbf{Cliques} are complete subgraphs, and thus subsets of fully cohesive vertices, like $K_1, K_2, K_3, \dots$, by \texttt{\color{blue}{cliques()}}. Example from `karate` where there are 34 isolated vertices ($K_1$), 78 pairs/$K_2$, 45 triangles/$K_3$, and so on:
+
+```{r}
+table(sapply(cliques(karate), length))
+```
+
+The 2 biggest cliques of size 5, both having the head instructor, are:
+```{r}
+cliques(karate)[sapply(cliques(karate), length) == 5]
+```
+
+\textbf{Maximal cliques}: cliques that are not subsets of a larger clique, \texttt{\color{blue}{maximal.cliques()}}
+```{r}
+table(sapply(maximal.cliques(karate), length))
+```
+
+\clearpage
+
+\textbf{$k$-core} of $G$ is \textit{maximal} subgraph for which all vertex degrees are $\geq k$. The notion of cores is popular in visualization in helping decomposing a network into 'layers', \texttt{\color{blue}{graph.coreness()}}:
+
+```{r fig.height=3,fig.width=6}
+library(sna)
+cores <- graph.coreness(karate)
+par(mar=c(0,0,1,0))
+sna::gplot.target(g, cores, circ.lab = FALSE, circ.col = 'darkblue', usearrows = FALSE,
+                  vertex.col = cores, edge.col = 'darkgray', main = 'k-core from karate')
+detach('package:sna'); detach('package:network')
+```
+
+***
+
+\clearpage
+
+## Density and Related Notions of Relative Frequency
+
+\textbf{Density}: frequency of realized edges relative to potential edges. For a \textit{simple, undirected} $G$, with $n$ vertices and $m$ edges, and subgraph $H$:
+$$ den(H) = \frac{m}{\frac{n(n-2)}{2}} $$
+For a \textit{simple, directed} $G$:
+$$ den(H) = \frac{m}{n(n-1)} $$
+
+If $H=G$, $den(H) = den(G)$. If $H = H_v: V(H_v) = N(v)$ (set of neighbors of $v$), $den(H)$ measures the density in the immediate neighborhood of $v$. To get $N(v)$: \texttt{\color{blue}{neighborhood()}}, subgraph: \texttt{\color{blue}{induced.subgraph()}}, and density: \texttt{\color{blue}{graph.density()}}. For example:
+
+```{r}
+# Getting subgraph of neighbors of the instructor, vertex 1, and admin, vertex 34
+ego.instr <- induced.subgraph(karate, neighborhood(karate, 1, 1)[[1]])
+ego.admin <- induced.subgraph(karate, neighborhood(karate, 1, 34)[[1]])
+den.k <- graph.density(karate); 
+den.i <- graph.density(ego.instr); den.a <- graph.density(ego.admin)
+```
+
+Whereas the whole network density is low, at `r den.k`, densities at both the instructor = `r den.i` and the admin = `r den.a` are quite higher, which is consistent with the disparity in the number of within-versus between-fraction edges.
+
+***
+
+\textbf{Clustering coefficient}, given $\tau_{\Delta}(G)$: the number of triangles in $G$, and $\tau_3(G)$: the number of connected triples (or 2-star):
+$$ cl_T(G) = \frac{3\ \tau_{\Delta}(G)}{\tau_3(G)} $$
+
+$c|_T$ also \textbf{transitivity}, or 'fraction of transitive triples', measuring global clustering for the entire network, \texttt{\color{blue}{transitivity()}}:
+
+```{r}
+transitivity(karate)
+```
+
+\textbf{\textit{Locally}}, let $\tau_{\Delta}(v)$: the number of triangles in $G$ containing $v$, and $\tau_3(v) = \binom{d_v}{2}$: the number of connected triples for which both 2 edges are incident to $v$. Then for $v$ such that $\tau_3(v) > 0$, the \textbf{local clustering coefficient} is:
+$$ cl(v) = \frac{\tau_{\Delta}(v)}{\tau_3(v)} $$
+
+```{r}
+transitivity(karate, 'local', vids = c(1,34))
+```
+
+Unique to \textit{directed} graph is \textbf{reciprocity}. There are 2 approaches: through dyads or directed edges:
+
+```{r}
+def <- reciprocity(aidsblog, mode = 'default'); rat <- reciprocity(aidsblog, mode = 'ratio')
+print(cat('Dyads: ', def, '\n', 'Directed edges: ', rat, '\n'))
+```
+
+***
+
+## Connectivity, Cuts, and Flows
+
+Recall \textit{components}, by \texttt{\color{blue}{decompse.graph()}}, and getting vertex count by \texttt{\color{blue}{vcount()}}. From `yeast` dataset, there is \textit{giant component} of $2375$ vertices or $90\%$ of all vertices, $0$ isolated vertices, $63$ pairs, ...
+
+```{r}
+comps <- decompose.graph(yeast)
+table(sapply(comps, vcount))
+```
+
+```{r}
+yeast.gc <- decompose.graph(yeast)[[1]]  # giant component
+ave.path <- round(average.path.length(yeast.gc),2)
+diam <- diameter(yeast.gc)
+tran <- round(transitivity(yeast.gc),2)
+```
+
+The giant component have a few characteristics of a \textbf{\textit{small world}} model such as small \textit{shortest-path distance between pairs of vertices} of `r ave.path`, and small \textit{longest paths} of `r diam`, and high \textit{clustering} of `r tran`, indicating that close to $50 \%$ of connected triples form triangles.
+
+***
+
+Recall from Graph Theory of Math 154, \textbf{$k$-vertex-connected} and \textbf{$k$-connected}, and that $\kappa(u,v) \leq \lambda(u,v) \leq \delta(G)$. To see connectivity: \texttt{\color{blue}{vertex.connectivity()}}, and \texttt{\color{blue}{edge.connectivity()}}:
+
+```{r}
+v.con <- vertex.connectivity(yeast.gc)
+e.con <- edge.connectivity(yeast.gc)
+print(paste('Vertex connectivity: ', v.con, '; Edge connectivity: ', e.con))
+```
+
+\textbf{Vertex-cut (edge-cut)} is a set vertices (edges) that disconnect $G$. Also, if only of size 1, \textit{cut vertex} or \textit{articulation point}, by \texttt{\color{blue}{articulation.points()}}:
+
+```{r}
+yeast.cut.vertices <- articulation.points(yeast.gc)
+print(paste('The number of cut vertices:', length(yeast.cut.vertices)))
+```
+
+\textbf{Menger's theorem} vertex form:
+$$ \min\{ab-\text{separator} \} = \max\{\text{pariwise internally disjoint paths between $a$ and $b$}\} $$
+
+`R`: \texttt{\color{blue}{shortest.paths()}}, \texttt{\color{blue}{graph.maxflow()}}, and \texttt{\color{blue}{graph.mincut()}}. 
+
+\clearpage
+
+These concepts extend naturally to \textit{directed} graphs:
+
+```{r}
+w.con <- is.connected(aidsblog, mode = 'weak')
+s.con <- is.connected(aidsblog, mode = 'strong')
+print(paste0('Weak: ', w.con, '; Strong: ', s.con))
+```
+
+Strongly connected components, from \texttt{\color{blue}{clusters()}}:
+
+```{r}
+aidsblog.scc <- clusters(aidsblog, mode = 'strong')
+table(aidsblog.scc$csize)
+```
+
+***
+
+\clearpage
+
+# Graph Partitioning
+
+***
+
+## Hierarchical Clustering
+
+There are 2 main approaches:
+
+*  \textbf{agglomerative}: successive coarsening of paritions through merging
+*  \textbf{divisive}: successive coarsening of paritions through splitting
+
+To do clustering: \texttt{\color{blue}{fastgreedy.community()}}, \texttt{\color{blue}{sizes()}}, \texttt{\color{blue}{membership()}}:
+
+```{r}
+kc <- fastgreedy.community(karate)
+sizes(kc)
+```
+
+```{r}
+membership(kc)
+```
+
+\texttt{\color{blue}{dendPlot()}} from package `ape` for dendogram:
+
+```{r fig.height=8,fig.width=8}
+library(ape)
+par(mfrow=c(1,2)); par(mar=c(0,0,1,0))
+plot(kc, karate, main = 'Clusters')
+dendPlot(kc, mode = 'phylo', main = 'Dendogram')
+```
+
+***
+
+\clearpage
+
+## Spectral Partitioning
+
+\textit{Spectral graph theory}: connectivity of $G$ is associated with the eigen-analysis of certain matrices. Define \textit{Laplacian} $L$ of $G$ with adjacency matrix $A$, and diagonal degree matrix $D = diag[(d_v)]$:
+$$L = D - A$$
+
+Then the number of components in $G$ is directly related to the number of non-zero eigenvalues of $L$. In `R`: \texttt{\color{blue}{graph.laplacian()}}, \texttt{\color{blue}{eigen()}}, \texttt{\color{blue}{get.vertex.attribute()}}:
+
+```{r fig.height=1.5,fig.width=6}
+par(mar=c(2,5,.5,5))
+k.lap <- graph.laplacian(karate)
+eig.anal <- eigen(k.lap)
+plot(eig.anal$values, col = 'blue', ylab = 'Eigenvalues')
+```
+
+Extracting \textit{Fiedler vector} $\textbf{x}_2$ from:
+$$ S = \{ v \in V: \textbf{x}_2(v) \geq 0 \}, \ \ \text{ and } \ \ 
+  \bar{S} = \{ v \in V: \textbf{x}_2(v) < 0 \}$$
+
+which partition into 2 subsets of vertices, for example:
+
+```{r fig.height=2,fig.width=6}
+par(mar=c(4,5,.5,5))
+f.vec <- eig.anal$vectors[, 33]
+faction <- get.vertex.attribute(karate, 'Faction')
+f.colors <- as.character(length(faction))
+f.colors[faction == 1] <- 'red'; f.colors[faction == 2] <- 'cyan'
+plot(f.vec, pch = 16, xlab = 'Actor Number', ylab = 'Fiedler Vector', col = f.colors)
+abline(0, 0, lwd = 2, col = 'lightgray')
+```
+
+***
+
+\clearpage
+
+## Validation of Graph Partitioning
+
+***
+
+# Assortativity and Mixing
+
+```{r}
+assortativity.degree(yeast)
+```
+
+***
