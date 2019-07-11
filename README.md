@@ -18,8 +18,8 @@ As planned, there will be notes for each of the 10 chapters, with the exception 
 4.  Descriptive Analysis of Network Graph Characteristics :heavy_check_mark:
 5.  Mathematical Models for Network Graphs :heavy_check_mark:
 6.  Statistical Models for Network Graphs :heavy_check_mark:
-7.  Network Topology Inference
-8.  Modeling and Prediction for Processes on Network Graphs
+7.  Network Topology Inference :heavy_check_mark:
+8.  Modeling and Prediction for Processes on Network Graphs :heavy_check_mark:
 9.  Analysis of Network Flow Data
 10.  Dynamic Networks
 
