@@ -23,4 +23,4 @@ As planned, there will be notes for each of the 10 chapters, with the exception 
 9.  Analysis of Network Flow Data
 10.  Dynamic Networks
 
-In each notes are key concepts: their big ideas and the general formulations, followed by examples in R.
+In each notes are key concepts: their big ideas and the general formulations, followed by examples in R. For convenience, the rendered pdf files are uploaded together with the RMD files.
